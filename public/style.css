@@ -51,6 +51,36 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 .status-pill.in_game   { color: var(--green);  border-color: var(--green); }
 .status-pill.player_connected { color: var(--green); border-color: var(--green); background: rgba(34,197,94,0.1); }
 
+.auth-card {
+  background: #1a1200;
+  border: 1px solid var(--yellow);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.auth-title { font-weight: 700; color: var(--yellow); font-size: 1rem; }
+.auth-step  { font-size: 0.85rem; color: #ccc; }
+.auth-step a { color: var(--yellow); }
+
+.auth-code {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #fff;
+  background: #0f0f0f;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  user-select: all;
+}
+
+.auth-expires { font-size: 0.75rem; color: var(--muted); text-align: center; }
+
 .queue-card {
   background: var(--surface);
   border: 1px solid var(--border);

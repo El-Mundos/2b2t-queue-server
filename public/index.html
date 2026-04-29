@@ -14,6 +14,15 @@
     </header>
 
     <main>
+      <div class="auth-card" id="auth-card" style="display:none">
+        <div class="auth-title">Microsoft Login Required</div>
+        <div class="auth-step">1. Open <a id="auth-url" href="https://microsoft.com/devicelogin" target="_blank">microsoft.com/devicelogin</a></div>
+        <div class="auth-step">2. Enter this code:</div>
+        <div class="auth-code" id="auth-code">——————</div>
+        <button class="btn btn-primary" onclick="copyCode()">Copy code</button>
+        <div class="auth-expires" id="auth-expires"></div>
+      </div>
+
       <div class="queue-card" id="queue-card">
         <div class="queue-label">Position in queue</div>
         <div class="queue-number" id="queue-number">—</div>

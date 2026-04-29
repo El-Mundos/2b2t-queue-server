@@ -1,14 +1,46 @@
-const pill    = document.getElementById('status-pill')
-const queueEl = document.getElementById('queue-number')
-const stateEl = document.getElementById('state-value')
-const wsEl    = document.getElementById('ws-status')
+const pill     = document.getElementById('status-pill')
+const queueEl  = document.getElementById('queue-number')
+const stateEl  = document.getElementById('state-value')
+const wsEl     = document.getElementById('ws-status')
 const btnStart = document.getElementById('btn-start')
 const btnStop  = document.getElementById('btn-stop')
+const authCard = document.getElementById('auth-card')
+const authCode = document.getElementById('auth-code')
+const authUrl  = document.getElementById('auth-url')
+const authExp  = document.getElementById('auth-expires')
 
 let currentState = 'idle'
+let authExpireTimer = null
+
+function showAuthCard(data) {
+  authCode.textContent = data.userCode
+  authUrl.href = data.verificationUri
+  authCard.style.display = 'flex'
+
+  clearInterval(authExpireTimer)
+  let remaining = data.expiresIn
+  authExp.textContent = `Expires in ${remaining}s`
+  authExpireTimer = setInterval(() => {
+    remaining--
+    if (remaining <= 0) { clearInterval(authExpireTimer); authExp.textContent = 'Code expired'; return }
+    authExp.textContent = `Expires in ${remaining}s`
+  }, 1000)
+}
+
+function hideAuthCard() {
+  authCard.style.display = 'none'
+  clearInterval(authExpireTimer)
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(authCode.textContent)
+  authCode.textContent = 'Copied!'
+  setTimeout(() => { authCode.textContent = authCode.dataset.code }, 1200)
+}
 
 function applyState(state, queuePosition) {
   currentState = state
+  if (state !== 'connecting') hideAuthCard()
 
   pill.textContent = state.replace('_', ' ')
   pill.className = 'status-pill ' + state
@@ -31,7 +63,10 @@ function applyState(state, queuePosition) {
 }
 
 function handleMessage(msg) {
-  if (msg.type === 'state') {
+  if (msg.type === 'auth_code') {
+    showAuthCard(msg)
+    authCode.dataset.code = msg.userCode
+  } else if (msg.type === 'state') {
     applyState(msg.state, msg.queuePosition)
   } else if (msg.type === 'queue_position') {
     if (currentState === 'queuing') {

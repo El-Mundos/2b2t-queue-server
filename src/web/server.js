@@ -26,6 +26,7 @@ function createWebServer(proxy) {
   proxy.on('in_game', () => broadcast({ type: 'in_game' }))
   proxy.on('player_connected', () => broadcast({ type: 'player_connected' }))
   proxy.on('player_disconnected', () => broadcast({ type: 'player_disconnected' }))
+  proxy.on('auth_code', (data) => broadcast({ type: 'auth_code', ...data }))
 
   wss.on('connection', (ws) => {
     // Send current state immediately on connect

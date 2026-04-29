@@ -48,6 +48,7 @@ function createProxy() {
     })
 
     upstream.on('login', () => {
+      console.log('[proxy] connected to 2b2t — in queue')
       setState(STATES.QUEUING)
       emitter.emit('upstream_ready', upstream)
     })

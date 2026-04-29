@@ -4,32 +4,40 @@ const { startAntiAfk, stopAntiAfk } = require('./antiaafk')
 function createBot(upstream, emitter) {
   let detached = false
   let afkInterval = null
-  let inGame = false
+  let hasSeenQueue = false
+  let lastQueueUpdate = 0
 
-const queueWatcher = createQueueWatcher(upstream)
+  const queueWatcher = createQueueWatcher(upstream)
   const fakeBot = createFakeBot(upstream)
 
   const queuePoll = setInterval(() => {
     if (detached) return
     const pos = queueWatcher.getPosition()
-    if (pos !== null) emitter.emit('queue_position', pos)
-  }, 5000)
-
-  function onHealth(packet) {
-    if (detached) return
-    if (!inGame) {
-      inGame = true
-      console.log('[bot] spawned — in game')
+    if (pos !== null) {
+      hasSeenQueue = true
+      lastQueueUpdate = Date.now()
+      emitter.emit('queue_position', pos)
+    } else if (hasSeenQueue && Date.now() - lastQueueUpdate > 60_000) {
+      // Queue was active but position gone for 60s — we're through
+      console.log('[bot] queue finished — in game')
       emitter.emit('in_game')
       clearInterval(queuePoll)
       afkInterval = startAntiAfk(fakeBot)
+      hasSeenQueue = false
     }
-    if (packet.health <= 0) {
-      console.log('[bot] died — respawning')
-      setTimeout(() => {
-        if (!detached) upstream.write('client_command', { payload: 0 })
-      }, 1000)
-    }
+  }, 5000)
+
+  function onHealth(packet) {
+    if (detached || packet.health <= 0) return
+    // Only trigger auto-respawn in-game, not during queue
+  }
+
+  function onDeath(packet) {
+    if (detached || packet.health > 0) return
+    console.log('[bot] died — respawning')
+    setTimeout(() => {
+      if (!detached) upstream.write('client_command', { payload: 0 })
+    }, 1000)
   }
 
   // Must acknowledge server-sent position teleports or 2b2t resets position
@@ -40,14 +48,14 @@ const queueWatcher = createQueueWatcher(upstream)
     fakeBot._update(packet.x, packet.y, packet.z, packet.yaw)
   }
 
-  upstream.on('update_health', onHealth)
+  upstream.on('update_health', onDeath)
   upstream.on('position', onPosition)
 
   function detach() {
     detached = true
     clearInterval(queuePoll)
     if (afkInterval) { stopAntiAfk(afkInterval); afkInterval = null }
-    upstream.removeListener('update_health', onHealth)
+    upstream.removeListener('update_health', onDeath)
     upstream.removeListener('position', onPosition)
     queueWatcher.destroy()
   }
@@ -64,7 +72,6 @@ function createFakeBot(upstream) {
       pos = { x, y, z }
       yawDeg = yaw ?? yawDeg
     },
-    // yaw/pitch in radians, matches mineflayer's bot.look() API
     look(yaw, pitch) {
       yawDeg = ((yaw * 180 / Math.PI) % 360 + 360) % 360
       upstream.write('look', {

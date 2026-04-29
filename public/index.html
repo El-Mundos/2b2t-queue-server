@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2b2t Queue</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>2b2t Queue</h1>
+      <div class="status-pill" id="status-pill">idle</div>
+    </header>
+
+    <main>
+      <div class="queue-card" id="queue-card">
+        <div class="queue-label">Position in queue</div>
+        <div class="queue-number" id="queue-number">—</div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-block">
+          <div class="info-label">State</div>
+          <div class="info-value" id="state-value">idle</div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">Connection</div>
+          <div class="info-value" id="ws-status">connecting…</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-start" class="btn btn-primary" onclick="apiCall('start')">Start</button>
+        <button id="btn-stop" class="btn btn-danger" onclick="apiCall('stop')" disabled>Stop</button>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

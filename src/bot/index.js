@@ -6,6 +6,13 @@ function createBot(upstream, emitter) {
   let afkInterval = null
   let inGame = false
 
+  // Temporary: log all scoreboard-related packets so we can verify field names
+  upstream.on('packet', (data, meta) => {
+    if (meta.name.includes('score') || meta.name.includes('board')) {
+      console.log('[debug packet]', meta.name, JSON.stringify(data))
+    }
+  })
+
   const queueWatcher = createQueueWatcher(upstream)
   const fakeBot = createFakeBot(upstream)
 

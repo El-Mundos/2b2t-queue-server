@@ -36,6 +36,7 @@ function createProxy() {
       auth: config.mc.auth,
       version: config.mc.version,
       hideErrors: false,
+      profilesFolder: '/app/auth',
       onMsaCode: (data) => {
         // Forward device code to dashboard so user can auth from the web UI
         emitter.emit('auth_code', {

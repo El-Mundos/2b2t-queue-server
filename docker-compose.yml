@@ -8,3 +8,4 @@ services:
     env_file: .env
     volumes:
       - ./logs:/app/logs
+      - ./auth:/app/auth

@@ -6,10 +6,15 @@ function createBot(upstream, emitter) {
   let afkInterval = null
   let inGame = false
 
-  // Temporary: log all scoreboard-related packets so we can verify field names
+  // Temporary: log all unique packet names + any scoreboard packet data
+  const seenPackets = new Set()
   upstream.on('packet', (data, meta) => {
-    if (meta.name.includes('score') || meta.name.includes('board')) {
-      console.log('[debug packet]', meta.name, JSON.stringify(data))
+    if (!seenPackets.has(meta.name)) {
+      seenPackets.add(meta.name)
+      console.log('[debug] new packet type:', meta.name)
+    }
+    if (meta.name.includes('score') || meta.name.includes('board') || meta.name.includes('title') || meta.name.includes('boss')) {
+      console.log('[debug scoreboard]', meta.name, JSON.stringify(data))
     }
   })
 

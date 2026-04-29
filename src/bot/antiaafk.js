@@ -1,7 +1,6 @@
 // Anti-AFK tick — called every INTERVAL ms while the bot is in-game.
-// The bot object is a full Mineflayer bot instance.
-// Available: bot.setControlState(action, bool), bot.look(yaw, pitch, force),
-//            bot.chat(msg), bot.jump(), bot.entity.yaw
+// Available: bot.setControlState(action, bool), bot.look(yaw, pitch)
+// yaw/pitch are in radians. setControlState supports: 'forward', 'jump'
 //
 function tick(bot, state) {
   // Rotate to a random yaw each tick so the bot looks alive

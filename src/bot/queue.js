@@ -1,29 +1,51 @@
-// Strips Minecraft color/format codes (§X)
-function stripColor(str) {
-  return str.replace(/§./g, '')
-}
+function createQueueWatcher(upstream) {
+  const objectives = {}
+  let sidebarObjective = null
 
-function parseQueuePosition(bot) {
-  const sb = bot.scoreboard
-  if (!sb) return null
-
-  // Find the sidebar display objective
-  const sidebarName = sb.sidebar
-  if (!sidebarName) return null
-
-  const objective = sb[sidebarName]
-  if (!objective) return null
-
-  // Score entries are keyed by their display name (which contains the position number)
-  // 2b2t puts the queue number as a score *name* entry, value is the display order
-  for (const itemName of Object.keys(objective.itemsMap || {})) {
-    const clean = stripColor(itemName).trim()
-    if (/^\d+$/.test(clean)) {
-      return parseInt(clean, 10)
-    }
+  function onObjective(packet) {
+    if (packet.action === 0) objectives[packet.name] = { scores: new Map() }
+    else if (packet.action === 1) delete objectives[packet.name]
   }
 
-  return null
+  function onDisplay(packet) {
+    // position 1 = sidebar
+    if (packet.position === 1) sidebarObjective = packet.name
+  }
+
+  // 1.20.1+ packet name
+  function onUpdateScore(packet) {
+    if (objectives[packet.scoreName])
+      objectives[packet.scoreName].scores.set(packet.itemName, packet.value)
+  }
+
+  // 1.20.1+ removal packet
+  function onResetScore(packet) {
+    if (packet.scoreName && objectives[packet.scoreName])
+      objectives[packet.scoreName].scores.delete(packet.entityName)
+  }
+
+  upstream.on('scoreboard_objective', onObjective)
+  upstream.on('display_scoreboard', onDisplay)
+  upstream.on('update_score', onUpdateScore)
+  upstream.on('reset_score', onResetScore)
+
+  function getPosition() {
+    if (!sidebarObjective || !objectives[sidebarObjective]) return null
+    for (const name of objectives[sidebarObjective].scores.keys()) {
+      const clean = name.replace(/§./g, '').trim()
+      if (/^\d+$/.test(clean)) return parseInt(clean, 10)
+    }
+    return null
+  }
+
+  function destroy() {
+    upstream.removeListener('scoreboard_objective', onObjective)
+    upstream.removeListener('display_scoreboard', onDisplay)
+    upstream.removeListener('update_score', onUpdateScore)
+    upstream.removeListener('reset_score', onResetScore)
+  }
+
+  return { getPosition, destroy }
 }
 
-module.exports = { parseQueuePosition }
+module.exports = { createQueueWatcher }

@@ -4,6 +4,7 @@ const { createWebServer } = require('./web/server')
 const proxy = createProxy()
 const web = createWebServer(proxy)
 
+proxy.startDownstreamServer()
 web.listen()
 
 process.on('SIGINT', () => {

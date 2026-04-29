@@ -9,7 +9,6 @@ function createApiRouter(proxy) {
 
   router.post('/start', (req, res) => {
     proxy.start()
-    proxy.startDownstreamServer()
     res.json({ ok: true })
   })
 

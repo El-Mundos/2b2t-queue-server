@@ -22,8 +22,10 @@ function createWebServer(proxy) {
   }
 
   proxy.on('state', (stateData) => broadcast({ type: 'state', ...stateData }))
-  proxy.on('queue_position', (pos) => broadcast({ type: 'queue_position', position: pos }))
-  proxy.on('in_game', () => broadcast({ type: 'in_game' }))
+  proxy.on('queue_position', (pos, eta) => {
+    broadcast({ type: 'queue_position', position: pos, eta: eta ?? null })
+  })
+  proxy.on('in_game', () => { broadcast({ type: 'in_game' }) })
   proxy.on('player_connected', () => broadcast({ type: 'player_connected' }))
   proxy.on('player_disconnected', () => broadcast({ type: 'player_disconnected' }))
   proxy.on('auth_code', (data) => broadcast({ type: 'auth_code', ...data }))

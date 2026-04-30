@@ -12,13 +12,16 @@ function createBot(upstream, emitter) {
 
   const queuePoll = setInterval(() => {
     if (detached) return
+    const now = Date.now()
     const pos = queueWatcher.getPosition()
-    if (pos !== null) {
+    const lastSeen = queueWatcher.getLastUpdate()
+
+    // Treat position as live only if 2b2t sent a subtitle within the last 45s.
+    if (pos !== null && now - lastSeen < 45_000) {
       hasSeenQueue = true
-      lastQueueUpdate = Date.now()
-      emitter.emit('queue_position', pos)
-    } else if (hasSeenQueue && Date.now() - lastQueueUpdate > 60_000) {
-      // Queue was active but position gone for 60s — we're through
+      lastQueueUpdate = now
+      emitter.emit('queue_position', pos, queueWatcher.getEta())
+    } else if (hasSeenQueue && now - lastQueueUpdate > 90_000) {
       console.log('[bot] queue finished — in game')
       emitter.emit('in_game')
       clearInterval(queuePoll)
@@ -26,11 +29,6 @@ function createBot(upstream, emitter) {
       hasSeenQueue = false
     }
   }, 5000)
-
-  function onHealth(packet) {
-    if (detached || packet.health <= 0) return
-    // Only trigger auto-respawn in-game, not during queue
-  }
 
   function onDeath(packet) {
     if (detached || packet.health > 0) return
@@ -40,7 +38,6 @@ function createBot(upstream, emitter) {
     }, 1000)
   }
 
-  // Must acknowledge server-sent position teleports or 2b2t resets position
   function onPosition(packet) {
     if (detached) return
     if (packet.teleportId != null)
@@ -74,11 +71,7 @@ function createFakeBot(upstream) {
     },
     look(yaw, pitch) {
       yawDeg = ((yaw * 180 / Math.PI) % 360 + 360) % 360
-      upstream.write('look', {
-        yaw: yawDeg,
-        pitch: pitch * 180 / Math.PI,
-        onGround: true,
-      })
+      upstream.write('look', { yaw: yawDeg, pitch: pitch * 180 / Math.PI, onGround: true })
     },
     setControlState(action, value) {
       if (!value || !pos) return

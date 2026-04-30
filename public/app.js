@@ -1,3 +1,4 @@
+const etaEl    = document.getElementById('queue-eta')
 const pill     = document.getElementById('status-pill')
 const queueEl  = document.getElementById('queue-number')
 const stateEl  = document.getElementById('state-value')
@@ -56,9 +57,11 @@ function applyState(state, queuePosition) {
   } else if (state === 'in_game' || state === 'player_connected') {
     queueEl.textContent = 'in game'
     queueEl.className = 'queue-number in-game'
+    etaEl.textContent = ''
   } else {
     queueEl.textContent = '—'
     queueEl.className = 'queue-number none'
+    etaEl.textContent = ''
   }
 }
 
@@ -72,6 +75,7 @@ function handleMessage(msg) {
     if (currentState === 'queuing') {
       queueEl.textContent = msg.position.toLocaleString()
       queueEl.className = 'queue-number'
+      etaEl.textContent = msg.eta != null ? '~' + msg.eta : ''
     }
   } else if (msg.type === 'in_game') {
     applyState('in_game', null)

@@ -18,6 +18,8 @@ function createProxy() {
   let handoff = null
   let state = STATES.IDLE
   let queuePosition = null
+  let preConnectionState = null
+  let capturedLogin = null
 
   function setState(s, data = {}) {
     state = s
@@ -38,7 +40,6 @@ function createProxy() {
       hideErrors: false,
       profilesFolder: '/app/auth',
       onMsaCode: (data) => {
-        // Forward device code to dashboard so user can auth from the web UI
         emitter.emit('auth_code', {
           userCode: data.user_code,
           verificationUri: data.verification_uri,
@@ -47,7 +48,19 @@ function createProxy() {
       },
     })
 
-    upstream.on('login', () => {
+    const capturedRegistries = []
+    upstream.on('packet', (data, meta) => {
+      if (meta.name === 'registry_data') capturedRegistries.push(data)
+    })
+
+    // NMP emits 'login' before our 'packet' listener can see it — capture it here.
+    upstream.on('login', (loginData) => {
+      capturedLogin = { data: loginData, meta: { name: 'login' } }
+      if (capturedRegistries.length > 0) {
+        downstreamServer.options.registryCodec = Object.fromEntries(
+          capturedRegistries.map((d, i) => [i, d])
+        )
+      }
       console.log('[proxy] connected to 2b2t — in queue')
       setState(STATES.QUEUING)
       emitter.emit('upstream_ready', upstream)
@@ -59,16 +72,8 @@ function createProxy() {
       setState(STATES.IDLE, { disconnectReason: reason })
     })
 
-    upstream.on('end', () => {
-      _cleanup()
-      setState(STATES.IDLE)
-    })
-
-    upstream.on('error', (err) => {
-      console.error('[proxy] upstream error:', err.message)
-      _cleanup()
-      setState(STATES.IDLE)
-    })
+    upstream.on('end', () => { _cleanup(); setState(STATES.IDLE) })
+    upstream.on('error', (err) => { console.error('[proxy] upstream error:', err.message); _cleanup(); setState(STATES.IDLE) })
   }
 
   function stop() {
@@ -81,11 +86,8 @@ function createProxy() {
     if (handoff) { handoff.destroy(); handoff = null }
     upstream = null
     queuePosition = null
-  }
-
-  function setQueuePosition(pos) {
-    queuePosition = pos
-    emitter.emit('state', { state, queuePosition })
+    preConnectionState = null
+    capturedLogin = null
   }
 
   function setInGame() {
@@ -93,7 +95,13 @@ function createProxy() {
   }
 
   function setPlayerConnected(connected) {
-    setState(connected ? STATES.PLAYER_CONNECTED : state === STATES.QUEUING ? STATES.QUEUING : STATES.IN_GAME)
+    if (connected) {
+      preConnectionState = state
+      setState(STATES.PLAYER_CONNECTED)
+    } else {
+      setState(preConnectionState || STATES.QUEUING)
+      preConnectionState = null
+    }
   }
 
   function startDownstreamServer() {
@@ -103,6 +111,10 @@ function createProxy() {
       version: config.mc.version,
       motd: '2b2t Queue Proxy',
       maxPlayers: 1,
+      // Use the real Mojang UUID so skin textures resolve correctly.
+      beforeLogin: (client) => {
+        if (upstream && upstream.uuid) client.uuid = upstream.uuid
+      },
     })
 
     downstreamServer.on('login', (client) => {
@@ -111,30 +123,35 @@ function createProxy() {
         client.end('Not allowed')
         return
       }
-
       if (!upstream || state === STATES.IDLE || state === STATES.CONNECTING) {
         client.end('Proxy not connected to 2b2t yet')
-        return
       }
+    })
 
-      if (handoff) handoff.attachClient(client)
+    // 'playerJoin' fires after configuration completes (client in PLAY state).
+    // Attaching here prevents play-state packets being forwarded during config phase.
+    downstreamServer.on('playerJoin', (client) => {
+      if (!upstream || !handoff) { client.end('Proxy not connected to 2b2t yet'); return }
+      handoff.attachClient(client)
     })
 
     console.log(`[proxy] listening on :${config.proxy.port}`)
   }
 
   emitter.on('upstream_ready', () => {
-    handoff = createHandoff(upstream, emitter)
+    handoff = createHandoff(upstream, emitter, capturedLogin)
     handoff.startBotMode()
   })
+
+  emitter.on('queue_position', (pos) => { queuePosition = pos })
+  emitter.on('in_game', () => setInGame())
+  emitter.on('player_connected', () => setPlayerConnected(true))
+  emitter.on('player_disconnected', () => setPlayerConnected(false))
 
   return {
     start,
     stop,
     startDownstreamServer,
-    setQueuePosition,
-    setInGame,
-    setPlayerConnected,
     getState: () => ({ state, queuePosition }),
     on: emitter.on.bind(emitter),
     off: emitter.off.bind(emitter),

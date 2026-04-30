@@ -7,21 +7,22 @@ function createBot(upstream, emitter) {
   let hasSeenQueue = false
   let lastQueueUpdate = 0
 
-  const queueWatcher = createQueueWatcher(upstream)
+  function emitPosition() {
+    if (detached) return
+    const pos = queueWatcher.getPosition()
+    if (pos === null) return
+    hasSeenQueue = true
+    lastQueueUpdate = Date.now()
+    emitter.emit('queue_position', pos, queueWatcher.getEta())
+  }
+
+  const queueWatcher = createQueueWatcher(upstream, emitPosition)
   const fakeBot = createFakeBot(upstream)
 
+  // Interval only needed to detect when queue ends (no subtitle for 90s).
   const queuePoll = setInterval(() => {
     if (detached) return
-    const now = Date.now()
-    const pos = queueWatcher.getPosition()
-    const lastSeen = queueWatcher.getLastUpdate()
-
-    // Treat position as live only if 2b2t sent a subtitle within the last 45s.
-    if (pos !== null && now - lastSeen < 45_000) {
-      hasSeenQueue = true
-      lastQueueUpdate = now
-      emitter.emit('queue_position', pos, queueWatcher.getEta())
-    } else if (hasSeenQueue && now - lastQueueUpdate > 90_000) {
+    if (hasSeenQueue && Date.now() - lastQueueUpdate > 90_000) {
       console.log('[bot] queue finished — in game')
       emitter.emit('in_game')
       clearInterval(queuePoll)

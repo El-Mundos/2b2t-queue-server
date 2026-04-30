@@ -39,7 +39,7 @@ function copyCode() {
   setTimeout(() => { authCode.textContent = authCode.dataset.code }, 1200)
 }
 
-function applyState(state, queuePosition) {
+function applyState(state, queuePosition, queueEta) {
   currentState = state
   if (state !== 'connecting') hideAuthCard()
 
@@ -51,17 +51,23 @@ function applyState(state, queuePosition) {
   btnStart.disabled = active
   btnStop.disabled = !active
 
-  if (state === 'queuing' && queuePosition != null) {
-    queueEl.textContent = queuePosition.toLocaleString()
-    queueEl.className = 'queue-number'
+  if (state === 'queuing') {
+    if (queuePosition != null) {
+      queueEl.textContent = queuePosition.toLocaleString()
+      queueEl.className = 'queue-number'
+    }
+    etaEl.textContent = queueEta != null ? queueEta : '—'
+    etaEl.className = 'queue-eta'
   } else if (state === 'in_game' || state === 'player_connected') {
     queueEl.textContent = 'in game'
     queueEl.className = 'queue-number in-game'
-    etaEl.textContent = ''
+    etaEl.textContent = 'in game'
+    etaEl.className = 'queue-eta in-game'
   } else {
     queueEl.textContent = '—'
     queueEl.className = 'queue-number none'
-    etaEl.textContent = ''
+    etaEl.textContent = '—'
+    etaEl.className = 'queue-eta none'
   }
 }
 
@@ -70,19 +76,22 @@ function handleMessage(msg) {
     showAuthCard(msg)
     authCode.dataset.code = msg.userCode
   } else if (msg.type === 'state') {
-    applyState(msg.state, msg.queuePosition)
+    applyState(msg.state, msg.queuePosition, msg.queueEta)
   } else if (msg.type === 'queue_position') {
     if (currentState === 'queuing') {
       queueEl.textContent = msg.position.toLocaleString()
       queueEl.className = 'queue-number'
-      etaEl.textContent = msg.eta != null ? '~' + msg.eta : ''
+      if (msg.eta != null) {
+        etaEl.textContent = msg.eta
+        etaEl.className = 'queue-eta'
+      }
     }
   } else if (msg.type === 'in_game') {
-    applyState('in_game', null)
+    applyState('in_game', null, null)
   } else if (msg.type === 'player_connected') {
-    applyState('player_connected', null)
+    applyState('player_connected', null, null)
   } else if (msg.type === 'player_disconnected') {
-    applyState(currentState === 'player_connected' ? 'in_game' : currentState, null)
+    applyState(currentState === 'player_connected' ? 'in_game' : currentState, null, null)
   }
 }
 

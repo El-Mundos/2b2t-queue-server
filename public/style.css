@@ -92,8 +92,15 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 
 .queue-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
 
+.queue-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  text-align: center;
+}
+
 .queue-number {
-  font-size: 4rem;
+  font-size: 3.5rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -102,7 +109,17 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 }
 .queue-number.in-game { color: var(--green); }
 .queue-number.none    { color: var(--muted); }
-.queue-eta { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; min-height: 1.2em; }
+
+.queue-eta {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--blue);
+  transition: color 0.3s;
+}
+.queue-eta.in-game { color: var(--green); }
+.queue-eta.none    { color: var(--muted); }
 
 .info-row {
   display: grid;

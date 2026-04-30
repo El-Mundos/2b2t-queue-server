@@ -18,6 +18,7 @@ function createProxy() {
   let handoff = null
   let state = STATES.IDLE
   let queuePosition = null
+  let queueEta = null
   let preConnectionState = null
   let capturedLogin = null
 
@@ -86,6 +87,7 @@ function createProxy() {
     if (handoff) { handoff.destroy(); handoff = null }
     upstream = null
     queuePosition = null
+    queueEta = null
     preConnectionState = null
     capturedLogin = null
   }
@@ -143,7 +145,7 @@ function createProxy() {
     handoff.startBotMode()
   })
 
-  emitter.on('queue_position', (pos) => { queuePosition = pos })
+  emitter.on('queue_position', (pos, eta) => { queuePosition = pos; queueEta = eta ?? queueEta })
   emitter.on('in_game', () => setInGame())
   emitter.on('player_connected', () => setPlayerConnected(true))
   emitter.on('player_disconnected', () => setPlayerConnected(false))
@@ -152,7 +154,7 @@ function createProxy() {
     start,
     stop,
     startDownstreamServer,
-    getState: () => ({ state, queuePosition }),
+    getState: () => ({ state, queuePosition, queueEta }),
     on: emitter.on.bind(emitter),
     off: emitter.off.bind(emitter),
     emit: emitter.emit.bind(emitter),

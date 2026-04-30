@@ -3,7 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
       - "${PROXY_PORT:-25565}:${PROXY_PORT:-25565}"
     env_file: .env
     volumes:

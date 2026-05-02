@@ -42,11 +42,12 @@ function createQueueWatcher(upstream, onChange) {
       const raw = packet.header
       const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
       const str = extractText(obj)
-      const etaMatch = str.match(/Estimated time:\s*(\S+)/)
-      if (etaMatch) {
-        lastEta = etaMatch[1]
-        onChange?.()
-      }
+      let changed = false
+      const etaMatch = str.match(/Estimated time:\s*(.+)/)
+      if (etaMatch) { lastEta = etaMatch[1].trim(); changed = true }
+      const posMatch = str.match(/Position in queue:\s*(\d+)/)
+      if (posMatch) { lastPosition = parseInt(posMatch[1], 10); lastUpdate = Date.now(); changed = true }
+      if (changed) onChange?.()
     } catch (_) {}
   }
 

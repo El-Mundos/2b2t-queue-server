@@ -49,6 +49,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   }
 
   function attachClient(downstreamClient) {
+    if (client === downstreamClient) return  // same client re-joining after reconfiguration
     if (client) { downstreamClient.end('Another client already connected'); return }
 
     client = downstreamClient
@@ -109,7 +110,11 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     packetBuffer = []
   }
 
-  return { startBotMode, attachClient, destroy }
+  function updatePinnedLogin(loginPacket) {
+    pinned.login = loginPacket
+  }
+
+  return { startBotMode, attachClient, updatePinnedLogin, destroy }
 }
 
 module.exports = { createHandoff }

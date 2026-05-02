@@ -55,12 +55,24 @@ function createProxy() {
     })
 
     // NMP emits 'login' before our 'packet' listener can see it — capture it here.
+    // It also re-fires after 2b2t's start_configuration (queue→game transition) — guard that.
     upstream.on('login', (loginData) => {
       capturedLogin = { data: loginData, meta: { name: 'login' } }
       if (capturedRegistries.length > 0) {
         downstreamServer.options.registryCodec = Object.fromEntries(
           capturedRegistries.map((d, i) => [i, d])
         )
+      }
+      if (handoff) {
+        // Reconfiguration: 2b2t cycled through config phase to enter the game.
+        // Update the cached login packet so the next client connect gets the fresh one,
+        // and if the bot is still waiting in queue, immediately mark as in_game.
+        handoff.updatePinnedLogin(capturedLogin)
+        if (state === STATES.QUEUING) {
+          console.log('[proxy] reconfiguration — entered game')
+          setInGame()
+        }
+        return
       }
       console.log('[proxy] connected to 2b2t — in queue')
       setState(STATES.QUEUING)

@@ -5,8 +5,8 @@ module.exports = {
     username: process.env.MC_USERNAME,
     password: process.env.MC_PASSWORD,
     auth: process.env.MC_AUTH || 'microsoft',
-    host: '2b2t.org',
-    port: 25565,
+    host: process.env.MC_HOST || '2b2t.org',
+    port: parseInt(process.env.MC_PORT) || 25565,
     version: process.env.MC_VERSION || '1.21.4',
   },
   proxy: {

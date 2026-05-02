@@ -41,7 +41,8 @@ function createQueueWatcher(upstream, onChange) {
     try {
       const raw = packet.header
       const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
-      const str = extractText(obj)
+      // Strip legacy color/format codes (§c, &l, etc.) before matching
+      const str = extractText(obj).replace(/[§&][0-9a-fk-or]/gi, '')
       let changed = false
       const etaMatch = str.match(/Estimated time:\s*(.+)/)
       if (etaMatch) { lastEta = etaMatch[1].trim(); changed = true }

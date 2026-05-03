@@ -54,6 +54,7 @@ function createProxy() {
     upstream.on('packet', (data, meta) => {
       if (meta.name === 'registry_data') capturedRegistries.push(data)
       if (meta.name === 'tags') { capturedTags = data; console.log('[proxy] captured upstream tags') }
+      if (!capturedLogin) console.log('[proxy] upstream config packet:', meta.name)
     })
 
     // NMP emits 'login' before our 'packet' listener can see it — capture it here.

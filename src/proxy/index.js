@@ -53,8 +53,7 @@ function createProxy() {
     const capturedRegistries = []
     upstream.on('packet', (data, meta) => {
       if (meta.name === 'registry_data') capturedRegistries.push(data)
-      if (meta.name === 'tags') { capturedTags = data; console.log('[proxy] captured upstream tags') }
-      if (!capturedLogin) console.log('[proxy] upstream config packet:', meta.name)
+      if (meta.name === 'tags') capturedTags = data
     })
 
     // NMP emits 'login' before our 'packet' listener can see it — capture it here.
@@ -152,13 +151,11 @@ function createProxy() {
       }
       // NMP's configuration phase sends registry_data but not tags.
       // Intercept finish_configuration to inject the captured tags packet first.
-      console.log('[proxy] downstream login — capturedTags:', capturedTags != null ? 'set' : 'null')
       if (capturedTags) {
         const tags = capturedTags
         const orig = client.write.bind(client)
         client.write = function (name, data) {
           if (name === 'finish_configuration') {
-            console.log('[proxy] injecting tags before finish_configuration')
             client.write = orig
             orig('tags', tags)
           }

@@ -1,7 +1,7 @@
 const { createQueueWatcher } = require('./queue')
 const { startAntiAfk, stopAntiAfk } = require('./antiaafk')
 
-function createBot(upstream, emitter) {
+function createBot(upstream, emitter, initialPosition = null) {
   let detached = false
   let afkInterval = null
   let hasSeenQueue = false
@@ -17,7 +17,7 @@ function createBot(upstream, emitter) {
   }
 
   const queueWatcher = createQueueWatcher(upstream, emitPosition)
-  const fakeBot = createFakeBot(upstream)
+  const fakeBot = createFakeBot(upstream, initialPosition)
 
   // Fallback: if no queue update for 10 minutes, assume we're in game.
   // The primary detection path is start_configuration → login re-fire in proxy/index.js.
@@ -68,9 +68,9 @@ function createBot(upstream, emitter) {
   return { detach }
 }
 
-function createFakeBot(upstream) {
-  let pos = null
-  let yawDeg = 0
+function createFakeBot(upstream, initialPosition = null) {
+  let pos = initialPosition ? { x: initialPosition.x, y: initialPosition.y, z: initialPosition.z } : null
+  let yawDeg = initialPosition?.yaw ?? 0
 
   return {
     _update(x, y, z, yaw) {

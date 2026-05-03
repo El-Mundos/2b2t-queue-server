@@ -22,8 +22,10 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   let packetBuffer = []
   const chunkCache = {}
   let destroyed = false
+  let lastPosition = null
 
   function _bufferListener(data, meta) {
+    if (meta.name === 'position') lastPosition = { x: data.x, y: data.y, z: data.z, yaw: data.yaw }
     if (PINNED.has(meta.name)) {
       pinned[meta.name] = { data, meta }
     } else if (BUFFERED.has(meta.name)) {
@@ -104,7 +106,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       upstream.removeListener('packet', upstreamToClient)
       client = null
       emitter.emit('player_disconnected')
-      if (!destroyed) bot = createBot(upstream, emitter)
+      if (!destroyed) bot = createBot(upstream, emitter, lastPosition)
     }
 
     client.on('end', onClientGone)

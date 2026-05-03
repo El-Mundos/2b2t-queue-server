@@ -80,25 +80,21 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       try { client.write(meta.name, data) } catch (_) {}
     }
 
-    let inConfigPhase = false
-
     function upstreamToClient(data, meta) {
       if (!client || destroyed) return
-      try { client.write(meta.name, data) } catch (_) {}
       if (meta.name === 'start_configuration') {
-        client.state = 'configuration'
-        inConfigPhase = true
-      } else if (meta.name === 'finish_configuration') {
-        client.state = 'play'
-        inConfigPhase = false
+        // MC client pipelines handle start_configuration at the Netty level — we can't
+        // proxy the config phase through a connected client. Disconnect gracefully;
+        // the upstream NMP client handles the config phase automatically, and the
+        // player can reconnect once the proxy reaches in_game state.
+        client.end('Entering game — reconnect in a few seconds')
+        return
       }
+      try { client.write(meta.name, data) } catch (_) {}
     }
 
-    // During config phase NMP's internal state machine handles the client's
-    // config responses (configuration_acknowledged, select_known_packs, etc.).
-    // Forwarding them here too would send duplicates to Velocity.
     function clientToUpstream(data, meta) {
-      if (!destroyed && !inConfigPhase) try { upstream.write(meta.name, data) } catch (_) {}
+      if (!destroyed) try { upstream.write(meta.name, data) } catch (_) {}
     }
 
     upstream.on('packet', upstreamToClient)

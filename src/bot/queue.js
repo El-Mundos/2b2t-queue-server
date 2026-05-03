@@ -52,8 +52,23 @@ function createQueueWatcher(upstream, onChange) {
     } catch (_) {}
   }
 
+  function onChat(packet) {
+    try {
+      const raw = packet.content ?? packet.message
+      const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
+      const str = extractText(obj).replace(/[§&][0-9a-fk-or]/gi, '')
+      const posMatch = str.match(/Position in queue:\s*(\d+)/)
+      if (posMatch) {
+        lastPosition = parseInt(posMatch[1], 10)
+        lastUpdate = Date.now()
+        onChange?.()
+      }
+    } catch (_) {}
+  }
+
   upstream.on('set_title_subtitle', onSubtitle)
   upstream.on('playerlist_header', onTabList)
+  upstream.on('system_chat', onChat)
 
   return {
     getPosition() { return lastPosition },
@@ -62,6 +77,7 @@ function createQueueWatcher(upstream, onChange) {
     destroy() {
       upstream.removeListener('set_title_subtitle', onSubtitle)
       upstream.removeListener('playerlist_header', onTabList)
+      upstream.removeListener('system_chat', onChat)
     },
   }
 }

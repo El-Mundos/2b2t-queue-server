@@ -21,6 +21,7 @@ function createProxy() {
   let queueEta = null
   let preConnectionState = null
   let capturedLogin = null
+  let capturedTags = null
 
   function setState(s, data = {}) {
     state = s
@@ -52,6 +53,7 @@ function createProxy() {
     const capturedRegistries = []
     upstream.on('packet', (data, meta) => {
       if (meta.name === 'registry_data') capturedRegistries.push(data)
+      if (meta.name === 'tags') capturedTags = data
     })
 
     // NMP emits 'login' before our 'packet' listener can see it — capture it here.
@@ -66,9 +68,9 @@ function createProxy() {
       if (handoff) {
         // Reconfiguration: 2b2t cycled through config phase to enter the game.
         // Update the cached login packet so the next client connect gets the fresh one,
-        // and if the bot is still waiting in queue, immediately mark as in_game.
+        // and mark as in_game whether or not a player is currently attached.
         handoff.updatePinnedLogin(capturedLogin)
-        if (state === STATES.QUEUING) {
+        if (state === STATES.QUEUING || state === STATES.PLAYER_CONNECTED) {
           console.log('[proxy] reconfiguration — entered game')
           setInGame()
         }
@@ -97,15 +99,21 @@ function createProxy() {
 
   function _cleanup() {
     if (handoff) { handoff.destroy(); handoff = null }
+    // Tear down the upstream object fully so stale event listeners don't
+    // re-fire login after Velocity's recovery loop sends start_configuration.
+    const _up = upstream
     upstream = null
+    if (_up) { try { _up.removeAllListeners(); _up.end() } catch (_) {} }
     queuePosition = null
     queueEta = null
     preConnectionState = null
     capturedLogin = null
+    capturedTags = null
   }
 
   function setInGame() {
     if (state === STATES.QUEUING) setState(STATES.IN_GAME)
+    else if (state === STATES.PLAYER_CONNECTED) preConnectionState = STATES.IN_GAME
   }
 
   function setPlayerConnected(connected) {
@@ -139,6 +147,20 @@ function createProxy() {
       }
       if (!upstream || state === STATES.IDLE || state === STATES.CONNECTING) {
         client.end('Proxy not connected to 2b2t yet')
+        return
+      }
+      // NMP's configuration phase sends registry_data but not tags.
+      // Intercept finish_configuration to inject the captured tags packet first.
+      if (capturedTags) {
+        const tags = capturedTags
+        const orig = client.write.bind(client)
+        client.write = function (name, data) {
+          if (name === 'finish_configuration') {
+            client.write = orig
+            orig('tags', tags)
+          }
+          orig(name, data)
+        }
       }
     })
 

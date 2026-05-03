@@ -19,10 +19,11 @@ function createBot(upstream, emitter) {
   const queueWatcher = createQueueWatcher(upstream, emitPosition)
   const fakeBot = createFakeBot(upstream)
 
-  // Interval only needed to detect when queue ends (no subtitle for 90s).
+  // Fallback: if no queue update for 10 minutes, assume we're in game.
+  // The primary detection path is start_configuration → login re-fire in proxy/index.js.
   const queuePoll = setInterval(() => {
     if (detached) return
-    if (hasSeenQueue && Date.now() - lastQueueUpdate > 90_000) {
+    if (hasSeenQueue && Date.now() - lastQueueUpdate > 600_000) {
       console.log('[bot] queue finished — in game')
       emitter.emit('in_game')
       clearInterval(queuePoll)
@@ -72,7 +73,7 @@ function createFakeBot(upstream) {
     },
     look(yaw, pitch) {
       yawDeg = ((yaw * 180 / Math.PI) % 360 + 360) % 360
-      upstream.write('look', { yaw: yawDeg, pitch: pitch * 180 / Math.PI, onGround: true })
+      upstream.write('look', { yaw: yawDeg, pitch: pitch * 180 / Math.PI, flags: { onGround: true } })
     },
     setControlState(action, value) {
       if (!value || !pos) return
@@ -80,10 +81,10 @@ function createFakeBot(upstream) {
       if (action === 'forward') {
         pos.x -= Math.sin(yawRad) * 0.15
         pos.z += Math.cos(yawRad) * 0.15
-        upstream.write('position', { x: pos.x, y: pos.y, z: pos.z, onGround: true })
+        upstream.write('position', { x: pos.x, y: pos.y, z: pos.z, flags: { onGround: true } })
       }
       if (action === 'jump') {
-        upstream.write('position', { x: pos.x, y: pos.y + 0.42, z: pos.z, onGround: false })
+        upstream.write('position', { x: pos.x, y: pos.y + 0.42, z: pos.z, flags: { onGround: false } })
       }
     },
   }

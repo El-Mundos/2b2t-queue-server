@@ -19,7 +19,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   let client = null
   // login arrives before _bufferListener is attached — seed it from the captured event.
   const pinned = initialLoginPacket ? { login: initialLoginPacket } : {}
-  let packetBuffer = []
+  const packetBuffer = new Map() // name → {data, meta} — keeps only latest per type
   const chunkCache = {}
   let destroyed = false
   let lastPosition = null
@@ -29,8 +29,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     if (PINNED.has(meta.name)) {
       pinned[meta.name] = { data, meta }
     } else if (BUFFERED.has(meta.name)) {
-      packetBuffer.push({ data, meta })
-      if (packetBuffer.length > 500) packetBuffer.shift()
+      packetBuffer.set(meta.name, { data, meta })
     } else if (meta.name === 'map_chunk') {
       const key = `${data.x},${data.z}`
       chunkCache[key] = chunkCache[key] || {}
@@ -78,7 +77,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     }
     console.log(`[handoff] replayed ${chunkEntries.length} chunks`)
 
-    for (const { data, meta } of packetBuffer) {
+    for (const { data, meta } of packetBuffer.values()) {
       try { client.write(meta.name, data) } catch (_) {}
     }
 
@@ -118,7 +117,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     upstream.removeListener('packet', _bufferListener)
     if (bot) { bot.detach(); bot = null }
     if (client) { client.end('Proxy stopped'); client = null }
-    packetBuffer = []
+    packetBuffer.clear()
   }
 
   function updatePinnedLogin(loginPacket) {

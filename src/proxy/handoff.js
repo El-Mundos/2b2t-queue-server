@@ -9,7 +9,7 @@ const PINNED = new Set([
 ])
 
 const BUFFERED = new Set([
-  'health', 'update_time', 'player_info', 'entity_equipment',
+  'health', 'update_time', 'player_info',
   'window_items', 'scoreboard_objective', 'display_scoreboard', 'scoreboard_score',
   'teams', 'boss_bar',
 ])
@@ -21,6 +21,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   const pinned = initialLoginPacket ? { login: initialLoginPacket } : {}
   const packetBuffer = new Map() // name → {data, meta} — keeps only latest per type
   const chunkCache = {}
+  const entityCache = new Map() // entityId → { spawn, metadata, equipment }
   let destroyed = false
   let lastPosition = null
 
@@ -30,6 +31,19 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       pinned[meta.name] = { data, meta }
     } else if (BUFFERED.has(meta.name)) {
       packetBuffer.set(meta.name, { data, meta })
+    } else if (meta.name === 'spawn_entity') {
+      entityCache.set(data.entityId, { spawn: { ...data } })
+    } else if (meta.name === 'entity_teleport') {
+      const e = entityCache.get(data.entityId)
+      if (e) Object.assign(e.spawn, { x: data.x, y: data.y, z: data.z, yaw: data.yaw, pitch: data.pitch })
+    } else if (meta.name === 'entity_metadata') {
+      const e = entityCache.get(data.entityId)
+      if (e) e.metadata = data
+    } else if (meta.name === 'entity_equipment') {
+      const e = entityCache.get(data.entityId)
+      if (e) e.equipment = data
+    } else if (meta.name === 'entity_destroy') {
+      for (const id of (data.entityIds ?? [])) entityCache.delete(id)
     } else if (meta.name === 'map_chunk') {
       const key = `${data.x},${data.z}`
       chunkCache[key] = chunkCache[key] || {}
@@ -75,7 +89,13 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     for (const entry of chunkEntries) {
       if (entry.chunk) try { client.write('map_chunk', entry.chunk.data) } catch (_) {}
     }
-    console.log(`[handoff] replayed ${chunkEntries.length} chunks`)
+    console.log(`[handoff] replayed ${chunkEntries.length} chunks, ${entityCache.size} entities`)
+
+    for (const e of entityCache.values()) {
+      try { client.write('spawn_entity', e.spawn) } catch (_) {}
+      if (e.metadata) try { client.write('entity_metadata', e.metadata) } catch (_) {}
+      if (e.equipment) try { client.write('entity_equipment', e.equipment) } catch (_) {}
+    }
 
     for (const { data, meta } of packetBuffer.values()) {
       try { client.write(meta.name, data) } catch (_) {}
@@ -118,6 +138,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     if (bot) { bot.detach(); bot = null }
     if (client) { client.end('Proxy stopped'); client = null }
     packetBuffer.clear()
+    entityCache.clear()
   }
 
   function updatePinnedLogin(loginPacket) {

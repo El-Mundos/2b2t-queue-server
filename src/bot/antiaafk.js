@@ -18,6 +18,7 @@ function tick(bot, state) {
   }, 1500 + Math.random() * 1000)
 
   state.tick++
+  console.log(`[bot] anti-afk tick #${state.tick}`)
 }
 
 // ─── runtime — no changes needed below ───────────────────────────────────────

@@ -5,6 +5,7 @@ const proxy = createProxy()
 const web = createWebServer(proxy)
 
 proxy.startDownstreamServer()
+proxy.start()
 web.listen()
 
 process.on('SIGINT', () => {

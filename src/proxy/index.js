@@ -40,7 +40,7 @@ function createProxy() {
       auth: config.mc.auth,
       version: config.mc.version,
       hideErrors: false,
-      profilesFolder: '/app/auth',
+      profilesFolder: process.env.AUTH_DIR || './auth',
       onMsaCode: (data) => {
         emitter.emit('auth_code', {
           userCode: data.user_code,

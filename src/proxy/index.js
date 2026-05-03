@@ -52,6 +52,7 @@ function createProxy() {
 
     const capturedRegistries = []
     upstream.on('packet', (data, meta) => {
+      if (meta.name === 'start_configuration') capturedRegistries.length = 0
       if (meta.name === 'registry_data') capturedRegistries.push(data)
       if (meta.name === 'tags') capturedTags = data
     })

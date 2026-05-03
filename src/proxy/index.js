@@ -184,7 +184,12 @@ function createProxy() {
   emitter.on('queue_position', (pos, eta) => { queuePosition = pos; queueEta = eta ?? queueEta })
   emitter.on('in_game', () => setInGame())
   emitter.on('player_connected', () => setPlayerConnected(true))
-  emitter.on('player_disconnected', () => setPlayerConnected(false))
+  emitter.on('player_disconnected', () => {
+    setPlayerConnected(false)
+    // If returning to in_game, tell the newly-created bot to start anti-AFK.
+    // setTimeout(0) lets onClientGone finish creating the bot first.
+    if (state === STATES.IN_GAME) setTimeout(() => emitter.emit('in_game'), 0)
+  })
 
   return {
     start,

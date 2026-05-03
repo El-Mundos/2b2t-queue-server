@@ -26,11 +26,16 @@ function createBot(upstream, emitter) {
     if (hasSeenQueue && Date.now() - lastQueueUpdate > 600_000) {
       console.log('[bot] queue finished — in game')
       emitter.emit('in_game')
-      clearInterval(queuePoll)
-      afkInterval = startAntiAfk(fakeBot)
       hasSeenQueue = false
     }
   }, 5000)
+
+  emitter.on('in_game', startAfkIfNeeded)
+  function startAfkIfNeeded() {
+    if (detached || afkInterval) return
+    clearInterval(queuePoll)
+    afkInterval = startAntiAfk(fakeBot)
+  }
 
   function onDeath(packet) {
     if (detached || packet.health > 0) return
@@ -53,6 +58,7 @@ function createBot(upstream, emitter) {
   function detach() {
     detached = true
     clearInterval(queuePoll)
+    emitter.removeListener('in_game', startAfkIfNeeded)
     if (afkInterval) { stopAntiAfk(afkInterval); afkInterval = null }
     upstream.removeListener('update_health', onDeath)
     upstream.removeListener('position', onPosition)

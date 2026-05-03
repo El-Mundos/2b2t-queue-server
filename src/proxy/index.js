@@ -140,13 +140,13 @@ function createProxy() {
     })
 
     downstreamServer.on('login', (client) => {
+      // IP check and "not connected" kicks are deferred to playerJoin (PLAY state).
+      // Calling client.end() here (configuration state) sends a login-state disconnect
+      // packet (0x00) which the MC client decodes as cookie_request → crash.
       const allowed = config.proxy.allowedIps
       if (allowed.length > 0 && !allowed.includes(client.socket.remoteAddress)) {
-        client.end('Not allowed')
-        return
-      }
-      if (!upstream || state === STATES.IDLE || state === STATES.CONNECTING) {
-        client.end('Proxy not connected to 2b2t yet')
+        // Store flag; actual kick happens in playerJoin.
+        client._notAllowed = true
         return
       }
       // NMP's configuration phase sends registry_data but not tags.
@@ -167,6 +167,7 @@ function createProxy() {
     // 'playerJoin' fires after configuration completes (client in PLAY state).
     // Attaching here prevents play-state packets being forwarded during config phase.
     downstreamServer.on('playerJoin', (client) => {
+      if (client._notAllowed) { client.end('Not allowed'); return }
       if (!upstream || !handoff) { client.end('Proxy not connected to 2b2t yet'); return }
       handoff.attachClient(client)
     })

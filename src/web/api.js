@@ -1,4 +1,5 @@
 const { Router } = require('express')
+const { generateToken } = require('../auth')
 
 function createApiRouter(proxy) {
   const router = Router()
@@ -15,6 +16,10 @@ function createApiRouter(proxy) {
   router.post('/stop', (req, res) => {
     proxy.stop()
     res.json({ ok: true })
+  })
+
+  router.post('/generate-token', (req, res) => {
+    res.json({ token: generateToken() })
   })
 
   return router

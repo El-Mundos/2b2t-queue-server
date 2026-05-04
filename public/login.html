@@ -6,23 +6,28 @@
   <title>2b2t Queue</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="login-page">
   <div class="container">
-    <header>
-      <h1>2b2t Queue</h1>
-    </header>
-    <main>
-      <form class="login-card" method="POST" action="/login">
-        <div class="login-label">Password</div>
-        <input class="login-input" type="password" name="password" placeholder="••••••••••••" autofocus>
-        <div class="login-error" id="error">Wrong password</div>
+    <form class="login-card" method="POST" action="/login" id="form">
+      <div class="login-brand">
+        <div class="login-logo">2b2t</div>
+        <div class="login-sub">Queue Proxy</div>
+      </div>
+      <div class="login-body">
+        <input class="login-input" type="password" name="password"
+               placeholder="Password" autofocus id="pw-input" autocomplete="current-password">
+        <p class="login-error" id="error">Wrong password — try again</p>
         <button type="submit" class="btn btn-primary">Enter</button>
-      </form>
-    </main>
+      </div>
+    </form>
   </div>
   <script>
-    if (location.search.includes('error=1'))
+    if (location.search.includes('error=1')) {
       document.getElementById('error').style.display = 'block'
+      const inp = document.getElementById('pw-input')
+      inp.classList.add('shake')
+      inp.addEventListener('animationend', () => inp.classList.remove('shake'), { once: true })
+    }
   </script>
 </body>
 </html>

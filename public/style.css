@@ -23,7 +23,14 @@ body {
   padding: 1.5rem 1rem;
 }
 
+body.login-page {
+  align-items: center;
+  padding: 1rem;
+}
+
 .container { width: 100%; max-width: 420px; }
+
+/* ── Header ─────────────────────────────────── */
 
 header {
   display: flex;
@@ -33,6 +40,12 @@ header {
 }
 
 h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
 
 .status-pill {
   font-size: 0.75rem;
@@ -45,11 +58,25 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
   border: 1px solid var(--border);
   transition: background 0.2s, color 0.2s;
 }
-.status-pill.idle      { color: var(--muted); }
-.status-pill.connecting{ color: var(--yellow); border-color: var(--yellow); }
-.status-pill.queuing   { color: var(--blue);   border-color: var(--blue); }
-.status-pill.in_game   { color: var(--green);  border-color: var(--green); }
+.status-pill.idle           { color: var(--muted); }
+.status-pill.connecting     { color: var(--yellow); border-color: var(--yellow); }
+.status-pill.queuing        { color: var(--blue);   border-color: var(--blue); }
+.status-pill.in_game        { color: var(--green);  border-color: var(--green); }
 .status-pill.player_connected { color: var(--green); border-color: var(--green); background: rgba(34,197,94,0.1); }
+
+.btn-logout {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.28rem 0.6rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border);
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-logout:hover { color: var(--red); border-color: var(--red); }
+
+/* ── Auth (MS login) card ────────────────────── */
 
 .auth-card {
   background: #1a1200;
@@ -80,6 +107,8 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 }
 
 .auth-expires { font-size: 0.75rem; color: var(--muted); text-align: center; }
+
+/* ── Queue card ──────────────────────────────── */
 
 .queue-card {
   background: var(--surface);
@@ -121,6 +150,8 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 .queue-eta.in-game { color: var(--green); }
 .queue-eta.none    { color: var(--muted); }
 
+/* ── Info row ────────────────────────────────── */
+
 .info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -138,43 +169,68 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 .info-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
 .info-value { font-size: 0.95rem; font-weight: 600; }
 
-.actions { display: flex; gap: 0.75rem; }
+/* ── Action buttons ──────────────────────────── */
 
-.login-card {
+.actions { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+
+/* ── Token card ──────────────────────────────── */
+
+.token-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 2rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.login-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.token-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.token-hint {
+  font-size: 0.7rem;
   color: var(--muted);
 }
 
-.login-input {
-  width: 100%;
+.token-display {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 0.6rem;
-  color: var(--text);
-  font-size: 1.1rem;
-  padding: 0.8rem 1rem;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.login-input:focus { border-color: var(--blue); }
-
-.login-error {
-  font-size: 0.82rem;
-  color: var(--red);
+  padding: 0.7rem 1rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.14em;
+  text-align: center;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity 0.3s;
+  user-select: all;
   display: none;
 }
+.token-display.visible { display: block; opacity: 1; }
+.token-display.fading  { opacity: 0; }
+
+.btn-token {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(59,130,246,0.12);
+  color: var(--blue);
+  border: 1px solid rgba(59,130,246,0.25);
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-token:hover  { background: rgba(59,130,246,0.2); }
+.btn-token:active { transform: scale(0.97); }
+
+/* ── Buttons ─────────────────────────────────── */
 
 .btn {
   flex: 1;
@@ -191,3 +247,84 @@ h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
 
 .btn-primary { background: var(--blue); color: #fff; }
 .btn-danger  { background: var(--red);  color: #fff; }
+
+/* ── Login page ──────────────────────────────── */
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+}
+
+.login-brand {
+  text-align: center;
+  padding: 2.25rem 2rem 1.75rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(160deg, #0d1220 0%, #131825 100%);
+}
+
+.login-logo {
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--blue);
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(59,130,246,0.4);
+}
+
+.login-sub {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+.login-body {
+  padding: 1.75rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  color: var(--text);
+  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  outline: none;
+  letter-spacing: 0.08em;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.login-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+.login-error {
+  font-size: 0.82rem;
+  color: var(--red);
+  text-align: center;
+  display: none;
+}
+
+.login-body .btn {
+  flex: unset;
+  width: 100%;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0) }
+  20%      { transform: translateX(-7px) }
+  40%      { transform: translateX(7px) }
+  60%      { transform: translateX(-4px) }
+  80%      { transform: translateX(4px) }
+}
+.shake { animation: shake 0.35s ease; }

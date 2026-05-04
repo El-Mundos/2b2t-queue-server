@@ -7,6 +7,7 @@ const config = require('../config')
 const { createApiRouter } = require('./api')
 
 const sessionToken = crypto.randomBytes(32).toString('hex')
+const COOKIE_MAX_AGE = 900 // 15 minutes
 
 function parseCookies(cookieHeader = '') {
   return Object.fromEntries(
@@ -23,6 +24,11 @@ function isAuthenticated(req) {
   return parseCookies(req.headers.cookie).token === sessionToken
 }
 
+function setSessionCookie(res) {
+  res.setHeader('Set-Cookie',
+    `token=${sessionToken}; HttpOnly; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Strict`)
+}
+
 function createWebServer(proxy) {
   const app = express()
   app.use(express.json())
@@ -30,18 +36,24 @@ function createWebServer(proxy) {
 
   app.post('/login', (req, res) => {
     if (req.body.password === config.proxy.password) {
-      res.setHeader('Set-Cookie', `token=${sessionToken}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Strict`)
+      setSessionCookie(res)
       res.redirect('/')
     } else {
       res.redirect('/login.html?error=1')
     }
   })
 
+  app.get('/logout', (req, res) => {
+    res.setHeader('Set-Cookie', 'token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict')
+    res.redirect('/login.html')
+  })
+
   app.use((req, res, next) => {
     if (!config.proxy.password) return next()
     if (req.path === '/login.html') return next()
-    if (isAuthenticated(req)) return next()
-    res.redirect('/login.html')
+    if (!isAuthenticated(req)) return res.redirect('/login.html')
+    setSessionCookie(res) // slide the 15-min window on activity
+    next()
   })
 
   app.use(express.static(path.join(__dirname, '../../public')))
@@ -64,7 +76,7 @@ function createWebServer(proxy) {
   proxy.on('queue_position', (pos, eta) => {
     broadcast({ type: 'queue_position', position: pos, eta: eta ?? null })
   })
-  proxy.on('in_game', () => { broadcast({ type: 'in_game' }) })
+  proxy.on('in_game', () => broadcast({ type: 'in_game' }))
   proxy.on('player_connected', () => broadcast({ type: 'player_connected' }))
   proxy.on('player_disconnected', () => broadcast({ type: 'player_disconnected' }))
   proxy.on('auth_code', (data) => broadcast({ type: 'auth_code', ...data }))

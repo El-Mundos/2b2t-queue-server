@@ -2,6 +2,7 @@ const mc = require('minecraft-protocol')
 const EventEmitter = require('events')
 const config = require('../config')
 const { createHandoff } = require('./handoff')
+const { checkPassword } = require('../auth')
 
 const STATES = {
   IDLE: 'idle',
@@ -187,7 +188,7 @@ function createProxy() {
         if (meta.name !== 'chat_message') return
         client.removeListener('packet', onPacket)
         clearTimeout(timer)
-        if (data.message === password) {
+        if (checkPassword(data.message)) {
           handoff.attachClient(client)
         } else {
           client.end('Wrong password')

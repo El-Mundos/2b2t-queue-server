@@ -10,7 +10,10 @@
   <div class="container">
     <header>
       <h1>2b2t Queue</h1>
-      <div class="status-pill" id="status-pill">idle</div>
+      <div class="header-right">
+        <div class="status-pill" id="status-pill">idle</div>
+        <a href="/logout" class="btn-logout">logout</a>
+      </div>
     </header>
 
     <main>
@@ -50,6 +53,17 @@
       <div class="actions">
         <button id="btn-start" class="btn btn-primary" onclick="apiCall('start')">Start</button>
         <button id="btn-stop" class="btn btn-danger" onclick="apiCall('stop')" disabled>Stop</button>
+      </div>
+
+      <div class="token-card">
+        <div class="token-header">
+          <span class="info-label">In-game token</span>
+          <span class="token-hint">one-time · expires in 5 min</span>
+        </div>
+        <div class="token-display" id="token-display">
+          <span id="token-value"></span>
+        </div>
+        <button class="btn btn-token" id="btn-token" onclick="generateToken()">Generate &amp; copy</button>
       </div>
     </main>
   </div>

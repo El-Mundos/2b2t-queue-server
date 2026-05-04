@@ -121,4 +121,38 @@ async function apiCall(action) {
   await fetch(`/api/${action}`, { method: 'POST' })
 }
 
+async function generateToken() {
+  const btn = document.getElementById('btn-token')
+  const display = document.getElementById('token-display')
+  const value = document.getElementById('token-value')
+
+  btn.disabled = true
+  btn.textContent = 'Generating…'
+
+  const res = await fetch('/api/generate-token', { method: 'POST' })
+  const { token } = await res.json()
+
+  value.textContent = token
+  display.classList.remove('fading')
+  display.style.display = 'block'
+  requestAnimationFrame(() => display.classList.add('visible'))
+
+  navigator.clipboard.writeText(token).catch(() => {})
+
+  btn.textContent = 'Copied!'
+  setTimeout(() => {
+    btn.disabled = false
+    btn.textContent = 'Generate & copy'
+  }, 3000)
+
+  // Fade out the display after 8 seconds
+  setTimeout(() => {
+    display.classList.add('fading')
+    display.addEventListener('transitionend', () => {
+      display.style.display = 'none'
+      display.classList.remove('visible', 'fading')
+    }, { once: true })
+  }, 8000)
+}
+
 connect()

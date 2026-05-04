@@ -66,7 +66,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     bot = createBot(upstream, emitter)
   }
 
-  function attachClient(downstreamClient) {
+  function attachClient(downstreamClient, checkAuth = null) {
     if (client === downstreamClient) return  // same client re-joining after reconfiguration
     if (client) { downstreamClient.end('Another client already connected'); return }
 
@@ -117,8 +117,39 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       try { client.write(meta.name, data) } catch (_) {}
     }
 
+    // When checkAuth is provided, block all client→upstream packets until the player
+    // types the correct password in chat. World data is already replayed above so the
+    // client is fully loaded in and can open chat normally.
+    let authorized = !checkAuth
     function clientToUpstream(data, meta) {
+      if (!authorized) return
       if (!destroyed) try { upstream.write(meta.name, data) } catch (_) {}
+    }
+
+    if (checkAuth) {
+      try {
+        client.write('system_chat', {
+          content: { type: 'compound', value: { text: { type: 'string', value: '[Proxy] Enter password in chat to play' } } },
+          isActionBar: false,
+        })
+      } catch (_) {}
+
+      const authTimer = setTimeout(() => {
+        client.removeListener('packet', onAuthPacket)
+        if (client) client.end('Password timeout')
+      }, 60_000)
+
+      function onAuthPacket(data, meta) {
+        if (meta.name !== 'chat_message') return
+        client.removeListener('packet', onAuthPacket)
+        clearTimeout(authTimer)
+        if (checkAuth(data.message)) {
+          authorized = true
+        } else {
+          client.end('Wrong password')
+        }
+      }
+      client.on('packet', onAuthPacket)
     }
 
     upstream.on('packet', upstreamToClient)

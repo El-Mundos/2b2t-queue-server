@@ -170,38 +170,7 @@ function createProxy() {
     downstreamServer.on('playerJoin', (client) => {
       if (client._notAllowed) { client.end('Not allowed'); return }
       if (!upstream || !handoff) { client.end('Proxy not connected to 2b2t yet'); return }
-
-      const password = config.proxy.password
-      if (!password) { handoff.attachClient(client); return }
-
-      client.write('system_chat', {
-        content: { type: 'compound', value: {
-          text:  { type: 'string', value: '[Proxy] ' },
-          color: { type: 'string', value: 'gray' },
-          extra: { type: 'list', value: { type: 'compound', value: [
-            { text: { type: 'string', value: 'Enter password in chat:' }, color: { type: 'string', value: 'yellow' } },
-          ] } },
-        } },
-        isActionBar: false,
-      })
-
-      const timer = setTimeout(() => {
-        client.removeListener('packet', onPacket)
-        client.end('Password timeout')
-      }, 30_000)
-
-      function onPacket(data, meta) {
-        if (meta.name !== 'chat_message') return
-        client.removeListener('packet', onPacket)
-        clearTimeout(timer)
-        if (checkPassword(data.message)) {
-          handoff.attachClient(client)
-        } else {
-          client.end('Wrong password')
-        }
-      }
-
-      client.on('packet', onPacket)
+      handoff.attachClient(client, config.proxy.password ? checkPassword : null)
     })
 
     console.log(`[proxy] listening on :${config.proxy.port}`)

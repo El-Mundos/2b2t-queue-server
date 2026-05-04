@@ -127,6 +127,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
         client.end('Entering game — reconnect in a few seconds')
         return
       }
+      if (!authorized) return
       try { client.write(meta.name, data) } catch (_) {}
     }
 

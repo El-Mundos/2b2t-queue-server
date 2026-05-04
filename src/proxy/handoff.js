@@ -117,6 +117,10 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       } catch (_) {}
     }
 
+    // Packets needed to load terrain — allowed through before auth so the client
+    // can dismiss "Loading Terrain" and open the chat to type the password.
+    const ALLOW_BEFORE_AUTH = new Set(['map_chunk', 'update_light', 'unload_chunk', 'position'])
+
     function upstreamToClient(data, meta) {
       if (!client || destroyed) return
       if (meta.name === 'start_configuration') {
@@ -127,16 +131,15 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
         client.end('Entering game — reconnect in a few seconds')
         return
       }
-      if (!authorized) return
+      if (!authorized && !ALLOW_BEFORE_AUTH.has(meta.name)) return
       try { client.write(meta.name, data) } catch (_) {}
     }
 
-    // When checkAuth is provided, block all client→upstream packets until the player
-    // types the correct password in chat. World data is already replayed above so the
-    // client is fully loaded in and can open chat normally.
+    // When checkAuth is provided, block client→upstream packets until password is
+    // entered — except teleport_confirm which must flow to keep 2b2t position sync.
     let authorized = !checkAuth
     function clientToUpstream(data, meta) {
-      if (!authorized) return
+      if (!authorized && meta.name !== 'teleport_confirm') return
       if (!destroyed) try { upstream.write(meta.name, data) } catch (_) {}
     }
 

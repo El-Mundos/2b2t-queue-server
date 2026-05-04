@@ -20,6 +20,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   // login arrives before _bufferListener is attached — seed it from the captured event.
   const pinned = initialLoginPacket ? { login: initialLoginPacket } : {}
   const packetBuffer = new Map() // name → {data, meta} — keeps only latest per type
+  const MAX_CHUNKS = 4096
   const chunkCache = {}
   const entityCache = new Map() // entityId → { spawn, metadata, equipment }
   let destroyed = false
@@ -46,6 +47,8 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       for (const id of (data.entityIds ?? [])) entityCache.delete(id)
     } else if (meta.name === 'map_chunk') {
       const key = `${data.x},${data.z}`
+      if (!chunkCache[key] && Object.keys(chunkCache).length >= MAX_CHUNKS)
+        delete chunkCache[Object.keys(chunkCache)[0]]
       chunkCache[key] = chunkCache[key] || {}
       chunkCache[key].chunk = { data, meta }
     } else if (meta.name === 'update_light') {

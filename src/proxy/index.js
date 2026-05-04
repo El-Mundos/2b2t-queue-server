@@ -93,7 +93,6 @@ function createProxy() {
   }
 
   function stop() {
-    if (upstream) upstream.end('proxy stopped')
     _cleanup()
     setState(STATES.IDLE)
   }

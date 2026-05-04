@@ -175,7 +175,13 @@ function createProxy() {
       if (!password) { handoff.attachClient(client); return }
 
       client.write('system_chat', {
-        content: JSON.stringify({ text: '[Proxy] ', color: 'gray', extra: [{ text: 'Enter password:', color: 'yellow' }] }),
+        content: { type: 'compound', value: {
+          text:  { type: 'string', value: '[Proxy] ' },
+          color: { type: 'string', value: 'gray' },
+          extra: { type: 'list', value: { type: 'compound', value: [
+            { text: { type: 'string', value: 'Enter password in chat:' }, color: { type: 'string', value: 'yellow' } },
+          ] } },
+        } },
         isActionBar: false,
       })
 

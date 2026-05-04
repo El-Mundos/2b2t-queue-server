@@ -2,33 +2,55 @@ const express = require('express')
 const { WebSocketServer } = require('ws')
 const http = require('http')
 const path = require('path')
+const crypto = require('crypto')
 const config = require('../config')
 const { createApiRouter } = require('./api')
 
-function checkAuth(req) {
-  const password = config.proxy.password
-  if (!password) return true
-  const auth = req.headers.authorization
-  if (!auth || !auth.startsWith('Basic ')) return false
-  const decoded = Buffer.from(auth.slice(6), 'base64').toString()
-  return decoded.slice(decoded.indexOf(':') + 1) === password
+const sessionToken = crypto.randomBytes(32).toString('hex')
+
+function parseCookies(cookieHeader = '') {
+  return Object.fromEntries(
+    cookieHeader.split(';').flatMap(c => {
+      const i = c.indexOf('=')
+      if (i < 0) return []
+      return [[c.slice(0, i).trim(), c.slice(i + 1).trim()]]
+    })
+  )
+}
+
+function isAuthenticated(req) {
+  if (!config.proxy.password) return true
+  return parseCookies(req.headers.cookie).token === sessionToken
 }
 
 function createWebServer(proxy) {
   const app = express()
-  app.use((req, res, next) => {
-    if (checkAuth(req)) return next()
-    res.set('WWW-Authenticate', 'Basic realm="2b2t Proxy"')
-    res.status(401).send('Unauthorized')
-  })
   app.use(express.json())
+  app.use(express.urlencoded({ extended: false }))
+
+  app.post('/login', (req, res) => {
+    if (req.body.password === config.proxy.password) {
+      res.setHeader('Set-Cookie', `token=${sessionToken}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Strict`)
+      res.redirect('/')
+    } else {
+      res.redirect('/login.html?error=1')
+    }
+  })
+
+  app.use((req, res, next) => {
+    if (!config.proxy.password) return next()
+    if (req.path === '/login.html') return next()
+    if (isAuthenticated(req)) return next()
+    res.redirect('/login.html')
+  })
+
   app.use(express.static(path.join(__dirname, '../../public')))
   app.use('/api', createApiRouter(proxy))
 
   const server = http.createServer(app)
   const wss = new WebSocketServer({
     server,
-    verifyClient: ({ req }) => checkAuth(req),
+    verifyClient: ({ req }) => isAuthenticated(req),
   })
 
   function broadcast(data) {
@@ -48,7 +70,6 @@ function createWebServer(proxy) {
   proxy.on('auth_code', (data) => broadcast({ type: 'auth_code', ...data }))
 
   wss.on('connection', (ws) => {
-    // Send current state immediately on connect
     ws.send(JSON.stringify({ type: 'state', ...proxy.getState() }))
   })
 

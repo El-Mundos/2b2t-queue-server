@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2b2t Queue</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>2b2t Queue</h1>
+    </header>
+    <main>
+      <form class="login-card" method="POST" action="/login">
+        <div class="login-label">Password</div>
+        <input class="login-input" type="password" name="password" placeholder="••••••••••••" autofocus>
+        <div class="login-error" id="error">Wrong password</div>
+        <button type="submit" class="btn btn-primary">Enter</button>
+      </form>
+    </main>
+  </div>
+  <script>
+    if (location.search.includes('error=1'))
+      document.getElementById('error').style.display = 'block'
+  </script>
+</body>
+</html>

@@ -161,12 +161,15 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
         })
       } catch (_) {}
 
-      const authTimer = setTimeout(() => {
-        client.removeListener('packet', onAuthPacket)
-        if (client) client.end('Password timeout')
-      }, 120_000)
-
+      // Timer starts on the first real movement packet — that only fires after Loading
+      // Terrain clears, so the user always gets the full 120s from when they can type.
+      let authTimer = null
       function onAuthPacket(data, meta) {
+        if (meta.name === 'teleport_confirm' || meta.name === 'chunk_batch_received') return
+        if (!authTimer) authTimer = setTimeout(() => {
+          client.removeListener('packet', onAuthPacket)
+          if (client) client.end('Password timeout')
+        }, 120_000)
         if (meta.name !== 'chat_message') return
         client.removeListener('packet', onAuthPacket)
         clearTimeout(authTimer)

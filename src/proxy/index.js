@@ -104,7 +104,7 @@ function createProxy() {
     // re-fire login after Velocity's recovery loop sends start_configuration.
     const _up = upstream
     upstream = null
-    if (_up) { try { _up.removeAllListeners(); _up.end() } catch (_) {} }
+    if (_up) { try { _up.removeAllListeners(); _up.on('error', () => {}); _up.end() } catch (_) {} }
     queuePosition = null
     queueEta = null
     preConnectionState = null

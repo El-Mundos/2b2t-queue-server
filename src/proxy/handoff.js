@@ -27,7 +27,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
   let lastPosition = null
 
   function _bufferListener(data, meta) {
-    if (meta.name === 'position') lastPosition = { x: data.x, y: data.y, z: data.z, yaw: data.yaw }
+    if (meta.name === 'position') lastPosition = { x: data.x, y: data.y, z: data.z, yaw: data.yaw, teleportId: data.teleportId }
     if (PINNED.has(meta.name)) {
       pinned[meta.name] = { data, meta }
     } else if (BUFFERED.has(meta.name)) {
@@ -102,6 +102,19 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
 
     for (const { data, meta } of packetBuffer.values()) {
       try { client.write(meta.name, data) } catch (_) {}
+    }
+
+    // Send last known position so the client dismisses "Loading Terrain" immediately.
+    // The client will respond with teleport_confirm which we don't forward (stale ID);
+    // 2b2t re-syncs the client on the next position packet it sends.
+    if (lastPosition) {
+      try {
+        client.write('position', {
+          x: lastPosition.x, y: lastPosition.y, z: lastPosition.z,
+          yaw: lastPosition.yaw ?? 0, pitch: 0,
+          flags: 0, teleportId: lastPosition.teleportId ?? 0,
+        })
+      } catch (_) {}
     }
 
     function upstreamToClient(data, meta) {

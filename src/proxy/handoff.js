@@ -164,7 +164,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       const authTimer = setTimeout(() => {
         client.removeListener('packet', onAuthPacket)
         if (client) client.end('Password timeout')
-      }, 60_000)
+      }, 120_000)
 
       function onAuthPacket(data, meta) {
         if (meta.name !== 'chat_message') return

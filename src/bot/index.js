@@ -57,6 +57,7 @@ function createBot(upstream, emitter, initialPosition = null) {
 
   function detach() {
     detached = true
+    fakeBot._detach()
     clearInterval(queuePoll)
     emitter.removeListener('in_game', startAfkIfNeeded)
     if (afkInterval) { stopAntiAfk(afkInterval); afkInterval = null }
@@ -71,18 +72,21 @@ function createBot(upstream, emitter, initialPosition = null) {
 function createFakeBot(upstream, initialPosition = null) {
   let pos = initialPosition ? { x: initialPosition.x, y: initialPosition.y, z: initialPosition.z } : null
   let yawDeg = initialPosition?.yaw ?? 0
+  let detached = false
 
   return {
+    _detach() { detached = true },
     _update(x, y, z, yaw) {
       pos = { x, y, z }
       yawDeg = yaw ?? yawDeg
     },
     look(yaw, pitch) {
+      if (detached) return
       yawDeg = ((yaw * 180 / Math.PI) % 360 + 360) % 360
       upstream.write('look', { yaw: yawDeg, pitch: pitch * 180 / Math.PI, flags: { onGround: true } })
     },
     setControlState(action, value) {
-      if (!value || !pos) return
+      if (detached || !value || !pos) return
       const yawRad = yawDeg * Math.PI / 180
       if (action === 'forward') {
         pos.x -= Math.sin(yawRad) * 0.15

@@ -121,7 +121,10 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     upstream.on('packet', upstreamToClient)
     client.on('packet', clientToUpstream)
 
+    let gone = false
     function onClientGone() {
+      if (gone) return
+      gone = true
       upstream.removeListener('packet', upstreamToClient)
       client = null
       emitter.emit('player_disconnected')
@@ -136,7 +139,8 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     destroyed = true
     upstream.removeListener('packet', _bufferListener)
     if (bot) { bot.detach(); bot = null }
-    if (client) { client.end('Proxy stopped'); client = null }
+    // Null client before end() so the deferred socket close doesn't trigger onClientGone.
+    if (client) { const c = client; client = null; c.end('Proxy stopped') }
     packetBuffer.clear()
     entityCache.clear()
   }

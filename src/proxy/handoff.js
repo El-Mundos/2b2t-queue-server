@@ -145,6 +145,18 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
         clearTimeout(authTimer)
         if (checkAuth(data.message)) {
           authorized = true
+          try {
+            client.write('system_chat', {
+              content: { type: 'compound', value: {
+                text:  { type: 'string', value: '[Proxy] ' },
+                color: { type: 'string', value: 'gray' },
+                extra: { type: 'list', value: { type: 'compound', value: [
+                  { text: { type: 'string', value: 'Authenticated' }, color: { type: 'string', value: 'green' } },
+                ] } },
+              } },
+              isActionBar: false,
+            })
+          } catch (_) {}
         } else {
           client.end('Wrong password')
         }

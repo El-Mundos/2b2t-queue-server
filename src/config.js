@@ -11,6 +11,7 @@ module.exports = {
   },
   proxy: {
     port: parseInt(process.env.PROXY_PORT) || 25565,
+    password: process.env.PROXY_PASSWORD || null,
     allowedIps: process.env.ALLOWED_IPS
       ? process.env.ALLOWED_IPS.split(',').map(s => s.trim())
       : [],

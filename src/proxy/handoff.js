@@ -84,15 +84,22 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       if (pinned[name]) try { client.write(name, pinned[name].data) } catch (_) {}
     }
 
-    // Replay cached chunks: light first, then chunk data.
+    // Replay cached chunks: light first, then chunk data wrapped in a batch so the
+    // 1.21.4 client counts them as received and can dismiss Loading Terrain.
     const chunkEntries = Object.values(chunkCache)
+    const chunkDataEntries = chunkEntries.filter(e => e.chunk)
     for (const entry of chunkEntries) {
       if (entry.light) try { client.write('update_light', entry.light.data) } catch (_) {}
     }
-    for (const entry of chunkEntries) {
-      if (entry.chunk) try { client.write('map_chunk', entry.chunk.data) } catch (_) {}
+    if (chunkDataEntries.length > 0) {
+      try { client.write('chunk_batch_start', {}) } catch (_) {}
+      for (const entry of chunkDataEntries) {
+        try { client.write('map_chunk', entry.chunk.data) } catch (_) {}
+      }
+      try { client.write('chunk_batch_finished', { batchSize: chunkDataEntries.length }) } catch (_) {}
     }
-    console.log(`[handoff] replayed ${chunkEntries.length} chunks, ${entityCache.size} entities`)
+    const posStr = lastPosition ? `${lastPosition.x.toFixed(1)},${lastPosition.y.toFixed(1)},${lastPosition.z.toFixed(1)}` : 'null'
+    console.log(`[handoff] replayed ${chunkEntries.length} chunks, ${entityCache.size} entities, pos=${posStr}`)
 
     for (const e of entityCache.values()) {
       try { client.write('spawn_entity', e.spawn) } catch (_) {}

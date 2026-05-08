@@ -1,4 +1,5 @@
 const { createBot } = require('../bot')
+const { log } = require('../logger')
 
 // respawn excluded: transient event, client.world goes null mid-init.
 // position excluded: bot already confirmed the teleportId; replaying it causes
@@ -116,7 +117,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       try { client.write('chunk_batch_finished', { batchSize: chunkDataEntries.length }) } catch (_) {}
     }
     const posStr = lastPosition ? `${lastPosition.x.toFixed(1)},${lastPosition.y.toFixed(1)},${lastPosition.z.toFixed(1)}` : 'null'
-    console.log(`[handoff] replayed ${chunkEntries.length} chunks, ${entityCache.size} entities, pos=${posStr}`)
+    log('proxy', `replayed ${chunkEntries.length} chunks, ${entityCache.size} entities, pos=${posStr}`)
 
     for (const e of entityCache.values()) {
       try { client.write('spawn_entity', e.spawn) } catch (_) {}
@@ -135,14 +136,20 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       'chunk_batch_start', 'chunk_batch_finished',
     ])
 
+    // Tracks whether we're mid-config-phase (start_configuration received but
+    // finish_configuration + login not yet received).
+    let inConfigPhase = false
+
     function upstreamToClient(data, meta) {
       if (!client || destroyed) return
       if (meta.name === 'start_configuration') {
-        // MC client pipelines handle start_configuration at the Netty level — we can't
-        // proxy the config phase through a connected client. Disconnect gracefully;
-        // the upstream NMP client handles the config phase automatically, and the
-        // player can reconnect once the proxy reaches in_game state.
-        client.end('Entering game — reconnect in a few seconds')
+        inConfigPhase = true
+        try { client.write('start_configuration', {}) } catch (_) {}
+        return
+      }
+      if (inConfigPhase) {
+        if (meta.name === 'login') inConfigPhase = false
+        try { client.write(meta.name, data) } catch (_) {}
         return
       }
       if (!authorized && !ALLOW_BEFORE_AUTH.has(meta.name)) return
@@ -150,10 +157,14 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
     }
 
     // When checkAuth is provided, block client→upstream packets until password is
-    // entered — except teleport_confirm which must flow to keep 2b2t position sync.
+    // entered — except teleport_confirm/chunk_batch_received/acknowledge_configuration
+    // which must flow to keep 2b2t position sync and config-phase handshake intact.
     let authorized = !checkAuth
     function clientToUpstream(data, meta) {
-      if (!authorized && meta.name !== 'teleport_confirm' && meta.name !== 'chunk_batch_received') return
+      if (!authorized
+        && meta.name !== 'teleport_confirm'
+        && meta.name !== 'chunk_batch_received'
+        && meta.name !== 'acknowledge_configuration') return
       if (!destroyed) try { upstream.write(meta.name, data) } catch (_) {}
     }
 
@@ -169,7 +180,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       // Terrain clears, so the user always gets the full 120s from when they can type.
       let authTimer = null
       function onAuthPacket(data, meta) {
-        if (meta.name === 'teleport_confirm' || meta.name === 'chunk_batch_received') return
+        if (meta.name === 'teleport_confirm' || meta.name === 'chunk_batch_received' || meta.name === 'acknowledge_configuration') return
         if (!authTimer) authTimer = setTimeout(() => {
           if (client) client.removeListener('packet', onAuthPacket)
           if (client) client.end('Password timeout')

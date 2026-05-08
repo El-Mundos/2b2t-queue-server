@@ -3,6 +3,7 @@ const EventEmitter = require('events')
 const config = require('../config')
 const { createHandoff } = require('./handoff')
 const { checkPassword } = require('../auth')
+const { log, error: logError } = require('../logger')
 
 const STATES = {
   IDLE: 'idle',
@@ -33,7 +34,7 @@ function createProxy() {
 
   function _scheduleReconnect() {
     if (stopped || reconnectTimer) return
-    console.log('[proxy] reconnecting in 30s...')
+    log('proxy', 'reconnecting in 30s...')
     reconnectTimer = setTimeout(() => { reconnectTimer = null; if (state === STATES.IDLE) start() }, 30_000)
   }
 
@@ -82,25 +83,25 @@ function createProxy() {
         // and mark as in_game whether or not a player is currently attached.
         handoff.updatePinnedLogin(capturedLogin)
         if (state === STATES.QUEUING || state === STATES.PLAYER_CONNECTED) {
-          console.log('[proxy] reconfiguration — entered game')
+          log('proxy', 'reconfiguration — entered game')
           setInGame()
         }
         return
       }
-      console.log('[proxy] connected to 2b2t — in queue')
+      log('proxy', 'connected to 2b2t — in queue')
       setState(STATES.QUEUING)
       emitter.emit('upstream_ready', upstream)
     })
 
     upstream.on('disconnect', ({ reason }) => {
-      console.log('[proxy] disconnected:', reason)
+      logError('proxy', 'disconnected:', reason)
       _cleanup()
       setState(STATES.IDLE, { disconnectReason: reason })
       _scheduleReconnect()
     })
 
     upstream.on('end', () => { _cleanup(); setState(STATES.IDLE); _scheduleReconnect() })
-    upstream.on('error', (err) => { console.error('[proxy] upstream error:', err.message); _cleanup(); setState(STATES.IDLE); _scheduleReconnect() })
+    upstream.on('error', (err) => { logError('proxy', 'upstream error:', err.message); _cleanup(); setState(STATES.IDLE); _scheduleReconnect() })
   }
 
   function stop() {
@@ -185,7 +186,7 @@ function createProxy() {
       handoff.attachClient(client, config.proxy.password ? checkPassword : null)
     })
 
-    console.log(`[proxy] listening on :${config.proxy.port}`)
+    log('proxy', `listening on :${config.proxy.port}`)
   }
 
   emitter.on('upstream_ready', () => {

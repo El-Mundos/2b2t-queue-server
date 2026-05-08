@@ -1,3 +1,4 @@
+const { log } = require('../logger')
 const express = require('express')
 const { WebSocketServer } = require('ws')
 const http = require('http')
@@ -87,7 +88,7 @@ function createWebServer(proxy) {
 
   function listen() {
     server.listen(config.web.port, () => {
-      console.log(`[web] dashboard at http://localhost:${config.web.port}`)
+      log('proxy', `dashboard at http://localhost:${config.web.port}`)
     })
   }
 

@@ -1,3 +1,5 @@
+const { log } = require('../logger')
+
 // Anti-AFK tick — called every INTERVAL ms while the bot is in-game.
 // Available: bot.setControlState(action, bool), bot.look(yaw, pitch)
 // yaw/pitch are in radians. setControlState supports: 'forward', 'jump'
@@ -18,7 +20,7 @@ function tick(bot, state) {
   }, 1500 + Math.random() * 1000)
 
   state.tick++
-  console.log(`[bot] anti-afk tick #${state.tick}`)
+  log('afk', `tick #${state.tick}`)
 }
 
 // ─── runtime — no changes needed below ───────────────────────────────────────

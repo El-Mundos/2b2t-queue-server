@@ -1,5 +1,6 @@
 const { createQueueWatcher } = require('./queue')
 const { startAntiAfk, stopAntiAfk } = require('./antiaafk')
+const { log } = require('../logger')
 
 function createBot(upstream, emitter, initialPosition = null) {
   let detached = false
@@ -24,7 +25,7 @@ function createBot(upstream, emitter, initialPosition = null) {
   const queuePoll = setInterval(() => {
     if (detached) return
     if (hasSeenQueue && Date.now() - lastQueueUpdate > 600_000) {
-      console.log('[bot] queue finished — in game')
+      log('bot', 'queue finished — in game')
       emitter.emit('in_game')
       hasSeenQueue = false
     }
@@ -39,7 +40,7 @@ function createBot(upstream, emitter, initialPosition = null) {
 
   function onDeath(packet) {
     if (detached || packet.health > 0) return
-    console.log('[bot] died — respawning')
+    log('bot', 'died — respawning')
     setTimeout(() => {
       if (!detached) upstream.write('client_command', { payload: 0 })
     }, 1000)
@@ -52,8 +53,16 @@ function createBot(upstream, emitter, initialPosition = null) {
     fakeBot._update(packet.x, packet.y, packet.z, packet.yaw)
   }
 
+  function onChat(packet) {
+    if (detached) return
+    const name = packet.senderName ? JSON.stringify(packet.senderName) : null
+    const body = packet.plainMessage ?? packet.message ?? ''
+    log('chat', name ? `<${name}> ${body}` : body)
+  }
+
   upstream.on('update_health', onDeath)
   upstream.on('position', onPosition)
+  upstream.on('player_chat', onChat)
 
   function detach() {
     detached = true
@@ -63,6 +72,7 @@ function createBot(upstream, emitter, initialPosition = null) {
     if (afkInterval) { stopAntiAfk(afkInterval); afkInterval = null }
     upstream.removeListener('update_health', onDeath)
     upstream.removeListener('position', onPosition)
+    upstream.removeListener('player_chat', onChat)
     queueWatcher.destroy()
   }
 

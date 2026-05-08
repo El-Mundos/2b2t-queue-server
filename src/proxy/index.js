@@ -23,14 +23,23 @@ function createProxy() {
   let preConnectionState = null
   let capturedLogin = null
   let capturedTags = null
+  let stopped = false
+  let reconnectTimer = null
 
   function setState(s, data = {}) {
     state = s
     emitter.emit('state', { state, queuePosition, ...data })
   }
 
+  function _scheduleReconnect() {
+    if (stopped || reconnectTimer) return
+    console.log('[proxy] reconnecting in 30s...')
+    reconnectTimer = setTimeout(() => { reconnectTimer = null; if (state === STATES.IDLE) start() }, 30_000)
+  }
+
   function start() {
     if (state !== STATES.IDLE) return
+    stopped = false
     setState(STATES.CONNECTING)
 
     upstream = mc.createClient({
@@ -87,13 +96,16 @@ function createProxy() {
       console.log('[proxy] disconnected:', reason)
       _cleanup()
       setState(STATES.IDLE, { disconnectReason: reason })
+      _scheduleReconnect()
     })
 
-    upstream.on('end', () => { _cleanup(); setState(STATES.IDLE) })
-    upstream.on('error', (err) => { console.error('[proxy] upstream error:', err.message); _cleanup(); setState(STATES.IDLE) })
+    upstream.on('end', () => { _cleanup(); setState(STATES.IDLE); _scheduleReconnect() })
+    upstream.on('error', (err) => { console.error('[proxy] upstream error:', err.message); _cleanup(); setState(STATES.IDLE); _scheduleReconnect() })
   }
 
   function stop() {
+    stopped = true
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     _cleanup()
     setState(STATES.IDLE)
   }

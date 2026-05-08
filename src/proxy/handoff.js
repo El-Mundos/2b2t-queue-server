@@ -11,7 +11,7 @@ const PINNED = new Set([
 const BUFFERED = new Set([
   'health', 'update_time', 'player_info',
   'window_items', 'scoreboard_objective', 'display_scoreboard', 'scoreboard_score',
-  'teams', 'boss_bar',
+  'teams', 'boss_bar', 'update_view_position',
 ])
 
 function createHandoff(upstream, emitter, initialLoginPacket) {
@@ -84,14 +84,31 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       if (pinned[name]) try { client.write(name, pinned[name].data) } catch (_) {}
     }
 
-    // Replay cached chunks: light first, then chunk data wrapped in a batch so the
-    // 1.21.4 client counts them as received and can dismiss Loading Terrain.
+    // Position must arrive before chunks so the client knows which chunk to wait for.
+    if (lastPosition) {
+      try {
+        client.write('position', {
+          x: lastPosition.x, y: lastPosition.y, z: lastPosition.z,
+          yaw: lastPosition.yaw ?? 0, pitch: 0,
+          flags: 0, teleportId: lastPosition.teleportId ?? 0,
+        })
+      } catch (_) {}
+    }
+
+    // chunk cache center — client uses this to know which chunk covers the player.
+    if (packetBuffer.has('update_view_position')) {
+      try { client.write('update_view_position', packetBuffer.get('update_view_position').data) } catch (_) {}
+    }
+
+    // Replay cached chunks. LEVEL_CHUNKS_LOAD_START (reason 13) primes the client's
+    // loading-screen countdown; without it the client may never dismiss Loading Terrain.
     const chunkEntries = Object.values(chunkCache)
     const chunkDataEntries = chunkEntries.filter(e => e.chunk)
     for (const entry of chunkEntries) {
       if (entry.light) try { client.write('update_light', entry.light.data) } catch (_) {}
     }
     if (chunkDataEntries.length > 0) {
+      try { client.write('game_state_change', { reason: 13, gameMode: 0 }) } catch (_) {}
       try { client.write('chunk_batch_start', {}) } catch (_) {}
       for (const entry of chunkDataEntries) {
         try { client.write('map_chunk', entry.chunk.data) } catch (_) {}
@@ -109,19 +126,6 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
 
     for (const { data, meta } of packetBuffer.values()) {
       try { client.write(meta.name, data) } catch (_) {}
-    }
-
-    // Send last known position so the client dismisses "Loading Terrain" immediately.
-    // The client will respond with teleport_confirm which we don't forward (stale ID);
-    // 2b2t re-syncs the client on the next position packet it sends.
-    if (lastPosition) {
-      try {
-        client.write('position', {
-          x: lastPosition.x, y: lastPosition.y, z: lastPosition.z,
-          yaw: lastPosition.yaw ?? 0, pitch: 0,
-          flags: 0, teleportId: lastPosition.teleportId ?? 0,
-        })
-      } catch (_) {}
     }
 
     // Packets needed to load terrain — allowed through before auth so the client
@@ -167,7 +171,7 @@ function createHandoff(upstream, emitter, initialLoginPacket) {
       function onAuthPacket(data, meta) {
         if (meta.name === 'teleport_confirm' || meta.name === 'chunk_batch_received') return
         if (!authTimer) authTimer = setTimeout(() => {
-          client.removeListener('packet', onAuthPacket)
+          if (client) client.removeListener('packet', onAuthPacket)
           if (client) client.end('Password timeout')
         }, 120_000)
         if (meta.name !== 'chat_message') return
